@@ -1,0 +1,19 @@
+{
+  "id": "intercom",
+  "name": "Intercom",
+  "author": "EZ Game Host LLC",
+  "version": "1.0.0",
+  "description": "Embeds the Intercom Messenger on end-user Pelican panels with verified identity for authenticated support conversations.",
+  "category": "plugin",
+  "url": "https://github.com/ezgamehost/pelican-plugin-intercom",
+  "update_url": "https://raw.githubusercontent.com/ezgamehost/pelican-plugin-intercom/main/updates.json",
+  "namespace": "EzGameHostLlc\\Intercom",
+  "class": "IntercomPlugin",
+  "panels": ["server", "app"],
+  "panel_version": null,
+  "composer_packages": null,
+  "meta": {
+    "status": "not_installed",
+    "status_message": null
+  }
+}
