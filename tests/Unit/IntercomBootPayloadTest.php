@@ -70,4 +70,34 @@ class IntercomBootPayloadTest extends TestCase
 
         $this->assertNull(IntercomBootPayload::forCurrentUser());
     }
+
+    public function test_returns_full_payload_when_authenticated_and_configured(): void
+    {
+        $createdAt = now();
+        $user = new \App\Models\User();
+        $user->forceFill([
+            'id' => 42,
+            'uuid' => '22222222-2222-2222-2222-222222222222',
+            'email' => 'alice@example.com',
+            'username' => 'alice',
+            'language' => 'de',
+            'timezone' => 'Europe/Berlin',
+            'created_at' => $createdAt,
+        ]);
+        $this->actingAs($user);
+
+        config()->set('intercom.app_id', 'my-app-id');
+        config()->set('intercom.identity_secret', 'my-secret');
+
+        $payload = IntercomBootPayload::forCurrentUser();
+
+        $this->assertIsArray($payload);
+        $this->assertSame('my-app-id', $payload['app_id']);
+        $this->assertSame('22222222-2222-2222-2222-222222222222', $payload['user_id']);
+        $this->assertSame('alice@example.com', $payload['email']);
+        $this->assertSame('alice', $payload['name']);
+        $this->assertSame($createdAt->timestamp, $payload['created_at']);
+        $this->assertSame('de', $payload['language_override']);
+        $this->assertSame('Europe/Berlin', $payload['timezone']);
+    }
 }
