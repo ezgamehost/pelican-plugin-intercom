@@ -22,6 +22,8 @@ class IntercomBootPayload
             'user_id' => $user->uuid,
             'user_hash' => hash_hmac('sha256', (string) $user->uuid, (string) $secret),
             'email' => $user->email,
+            // Intercom's "name" field maps to Pelican's username — the User model
+            // has no first/last split, and username is the canonical display handle.
             'name' => $user->username,
             'created_at' => $user->created_at?->timestamp,
             'language_override' => $user->language,
