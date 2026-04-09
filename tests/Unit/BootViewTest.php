@@ -67,4 +67,43 @@ class BootViewTest extends TestCase
         // Hash must be non-empty hex.
         $this->assertMatchesRegularExpression('/"user_hash":"[0-9a-f]{64}"/', $output);
     }
+
+    public function test_user_data_containing_script_tag_is_hex_escaped(): void
+    {
+        // Regression guard: if JSON_HEX_TAG is ever removed or the payload
+        // is interpolated without json_encode, user-controlled strings like
+        // this username could break out of the <script> context. The flag
+        // must convert `<` → `\u003c` and `>` → `\u003e`.
+        $user = new User();
+        $user->forceFill([
+            'id' => 1,
+            'uuid' => '55555555-5555-5555-5555-555555555555',
+            'email' => 'mallory@example.com',
+            'username' => '</script><script>alert(1)</script>',
+            'language' => 'en',
+            'timezone' => 'UTC',
+            'created_at' => now(),
+        ]);
+        $this->actingAs($user);
+
+        config()->set('intercom.app_id', 'workspace-xyz');
+        config()->set('intercom.identity_secret', 'secret');
+
+        $output = view('intercom::boot')->render();
+
+        // The literal closing tag must NOT appear anywhere outside a
+        // legitimate Blade-emitted </script> (the two script closers in
+        // the template). Count them: there should be exactly 2, one per
+        // emitted <script> block. Any more means user data leaked out.
+        $this->assertSame(
+            2,
+            substr_count($output, '</script>'),
+            'User data containing </script> was not hex-escaped — XSS risk.'
+        );
+
+        // And the hex-escaped form should appear in the payload JSON.
+        // PHP's JSON_HEX_TAG emits uppercase hex: `<` → `\u003C`, `>` → `\u003E`;
+        // JSON_UNESCAPED_SLASHES keeps `/` as `/`.
+        $this->assertStringContainsString('\u003C/script\u003E', $output);
+    }
 }
