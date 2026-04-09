@@ -50,4 +50,24 @@ class IntercomBootPayloadTest extends TestCase
 
         $this->assertNull(IntercomBootPayload::forCurrentUser());
     }
+
+    public function test_returns_null_when_identity_secret_is_blank(): void
+    {
+        $user = new \App\Models\User();
+        $user->forceFill([
+            'id' => 1,
+            'uuid' => '11111111-1111-1111-1111-111111111111',
+            'email' => 'user@example.com',
+            'username' => 'testuser',
+            'language' => 'en',
+            'timezone' => 'UTC',
+            'created_at' => now(),
+        ]);
+        $this->actingAs($user);
+
+        config()->set('intercom.app_id', 'test-app-id');
+        config()->set('intercom.identity_secret', '');
+
+        $this->assertNull(IntercomBootPayload::forCurrentUser());
+    }
 }
