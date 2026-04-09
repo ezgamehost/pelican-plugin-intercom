@@ -100,4 +100,27 @@ class IntercomBootPayloadTest extends TestCase
         $this->assertSame('de', $payload['language_override']);
         $this->assertSame('Europe/Berlin', $payload['timezone']);
     }
+
+    public function test_user_hash_is_hmac_sha256_of_uuid(): void
+    {
+        $user = new \App\Models\User();
+        $user->forceFill([
+            'id' => 1,
+            'uuid' => 'known-uuid-fixture',
+            'email' => 'u@example.com',
+            'username' => 'u',
+            'language' => 'en',
+            'timezone' => 'UTC',
+            'created_at' => now(),
+        ]);
+        $this->actingAs($user);
+
+        config()->set('intercom.app_id', 'app');
+        config()->set('intercom.identity_secret', 'known-secret');
+
+        $payload = IntercomBootPayload::forCurrentUser();
+        $expected = hash_hmac('sha256', 'known-uuid-fixture', 'known-secret');
+
+        $this->assertSame($expected, $payload['user_hash']);
+    }
 }
