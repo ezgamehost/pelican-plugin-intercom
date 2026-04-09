@@ -1,0 +1,48 @@
+name: Lint
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  php-syntax:
+    name: PHP Syntax (php -l)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: none
+          coverage: none
+
+      - name: Lint PHP files
+        run: |
+          set -e
+          find src tests config -type f -name "*.php" -print0 \
+            | xargs -0 -n1 -P4 php -l
+
+  pint:
+    name: Pint (code style)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: composer:v2
+          coverage: none
+
+      - name: Install Pint
+        run: composer global require laravel/pint:^1.28 --no-interaction --no-progress
+
+      - name: Run Pint
+        run: ~/.composer/vendor/bin/pint --test --config=pint.json

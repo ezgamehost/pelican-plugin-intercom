@@ -1,0 +1,96 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Code checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          tools: none
+          coverage: none
+
+      - name: Resolve version from tag
+        id: version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -e
+          VERSION="${REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Building release for version: $VERSION"
+
+      - name: Bump plugin.json version to match tag
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -e
+          php -r '
+            $path = "plugin.json";
+            $json = json_decode(file_get_contents($path), true);
+            if (!is_array($json)) { fwrite(STDERR, "plugin.json is not valid JSON\n"); exit(1); }
+            $json["version"] = getenv("VERSION");
+            file_put_contents($path, json_encode($json, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n");
+          '
+          cat plugin.json
+
+      - name: Stage plugin directory
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -e
+          STAGE="$(mktemp -d)"
+          DEST="$STAGE/intercom"
+          mkdir -p "$DEST"
+          rsync -a \
+            --exclude ".git" \
+            --exclude ".github" \
+            --exclude ".gitignore" \
+            --exclude ".phpunit.result.cache" \
+            --exclude ".phpunit.cache" \
+            --exclude ".idea" \
+            --exclude ".vscode" \
+            --exclude ".DS_Store" \
+            --exclude "docs" \
+            --exclude "tests" \
+            --exclude "pint.json" \
+            --exclude "vendor" \
+            --exclude "node_modules" \
+            ./ "$DEST/"
+          echo "Staged contents:"
+          find "$DEST" -maxdepth 2 -print
+          echo "STAGE=$STAGE" >> "$GITHUB_ENV"
+
+      - name: Create release archive
+        run: |
+          set -e
+          (cd "$STAGE" && zip -r "$GITHUB_WORKSPACE/intercom.zip" intercom)
+          ls -la intercom.zip
+
+      - name: Create checksum
+        run: sha256sum intercom.zip > checksum.txt
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          draft: true
+          prerelease: ${{ contains(github.ref_name, 'rc') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'alpha') }}
+          generate_release_notes: true
+          files: |
+            intercom.zip
+            checksum.txt

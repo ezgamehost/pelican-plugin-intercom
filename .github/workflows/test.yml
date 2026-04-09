@@ -1,0 +1,94 @@
+name: Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+env:
+  # Host panel repo. Override via workflow_dispatch if a fork/branch is needed.
+  PANEL_REPO: pelican-dev/panel
+  PANEL_REF: main
+  # Mirrors panel's ci.yaml so pest + Laravel boot identically.
+  APP_ENV: testing
+  APP_DEBUG: "false"
+  APP_KEY: ThisIsARandomStringForTests12345
+  APP_TIMEZONE: UTC
+  APP_URL: http://localhost/
+  CACHE_DRIVER: array
+  MAIL_MAILER: array
+  SESSION_DRIVER: array
+  QUEUE_CONNECTION: sync
+  DB_CONNECTION: sqlite
+  DB_DATABASE: testing.sqlite
+
+jobs:
+  pest:
+    name: Pest (PHP ${{ matrix.php }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ["8.3", "8.4"]
+    steps:
+      - name: Checkout plugin
+        uses: actions/checkout@v4
+        with:
+          path: plugin
+
+      - name: Checkout host panel
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PANEL_REPO }}
+          ref: ${{ env.PANEL_REF }}
+          path: panel
+
+      - name: Drop plugin into panel/plugins/intercom
+        run: |
+          set -e
+          mkdir -p panel/plugins
+          cp -R plugin panel/plugins/intercom
+          ls -la panel/plugins/intercom
+
+      - name: Get composer cache directory
+        id: composer-cache
+        working-directory: panel
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache composer
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.composer-cache.outputs.dir }}
+          key: ${{ runner.os }}-composer-${{ matrix.php }}-${{ hashFiles('panel/composer.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-composer-${{ matrix.php }}-
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: bcmath, curl, gd, mbstring, mysql, openssl, pdo, tokenizer, xml, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Install panel dependencies
+        working-directory: panel
+        run: composer install --no-interaction --no-suggest --no-progress --no-scripts
+
+      - name: Setup .env and SQLite
+        working-directory: panel
+        run: |
+          cp .env.example .env
+          touch database/testing.sqlite
+
+      - name: Run migrations + seed
+        working-directory: panel
+        run: php artisan migrate --force --seed
+
+      - name: Run plugin unit tests
+        working-directory: panel
+        env:
+          DB_HOST: UNIT_NO_DB
+          SKIP_MIGRATIONS: "true"
+        run: vendor/bin/pest plugins/intercom/tests/Unit --colors=always

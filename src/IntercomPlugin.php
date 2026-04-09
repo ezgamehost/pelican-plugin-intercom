@@ -7,8 +7,9 @@ use App\Traits\EnvironmentWriterTrait;
 use Filament\Contracts\Plugin;
 use Filament\Forms\Components\TextInput;
 use Filament\Panel;
+use Filament\Schemas\Components\Component;
 
-class IntercomPlugin implements Plugin, HasPluginSettings
+class IntercomPlugin implements HasPluginSettings, Plugin
 {
     use EnvironmentWriterTrait;
 
@@ -29,7 +30,7 @@ class IntercomPlugin implements Plugin, HasPluginSettings
     }
 
     /**
-     * @return \Filament\Schemas\Components\Component[]
+     * @return Component[]
      */
     public function getSettingsForm(): array
     {
