@@ -123,4 +123,27 @@ class IntercomBootPayloadTest extends TestCase
 
         $this->assertSame($expected, $payload['user_hash']);
     }
+
+    public function test_user_id_is_uuid_not_integer_id(): void
+    {
+        $user = new \App\Models\User();
+        $user->forceFill([
+            'id' => 12345,
+            'uuid' => 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee',
+            'email' => 'u@example.com',
+            'username' => 'u',
+            'language' => 'en',
+            'timezone' => 'UTC',
+            'created_at' => now(),
+        ]);
+        $this->actingAs($user);
+
+        config()->set('intercom.app_id', 'app');
+        config()->set('intercom.identity_secret', 'secret');
+
+        $payload = IntercomBootPayload::forCurrentUser();
+
+        $this->assertSame('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', $payload['user_id']);
+        $this->assertNotSame(12345, $payload['user_id']);
+    }
 }
