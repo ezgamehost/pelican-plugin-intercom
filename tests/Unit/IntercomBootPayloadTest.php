@@ -146,4 +146,45 @@ class IntercomBootPayloadTest extends TestCase
         $this->assertSame('aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee', $payload['user_id']);
         $this->assertNotSame(12345, $payload['user_id']);
     }
+
+    public function test_payload_keys_match_whitelist_exactly(): void
+    {
+        $user = new \App\Models\User();
+        $user->forceFill([
+            'id' => 1,
+            'uuid' => '33333333-3333-3333-3333-333333333333',
+            'email' => 'u@example.com',
+            'username' => 'u',
+            'language' => 'en',
+            'timezone' => 'UTC',
+            'created_at' => now(),
+        ]);
+        $this->actingAs($user);
+
+        config()->set('intercom.app_id', 'app');
+        config()->set('intercom.identity_secret', 'secret');
+
+        $payload = IntercomBootPayload::forCurrentUser();
+
+        $expectedKeys = [
+            'app_id',
+            'user_id',
+            'user_hash',
+            'email',
+            'name',
+            'created_at',
+            'language_override',
+            'timezone',
+        ];
+
+        sort($expectedKeys);
+        $actualKeys = array_keys($payload);
+        sort($actualKeys);
+
+        $this->assertSame(
+            $expectedKeys,
+            $actualKeys,
+            'IntercomBootPayload leaks or drops a field — every key change needs a privacy review. See spec §8 (PII whitelist).'
+        );
+    }
 }
