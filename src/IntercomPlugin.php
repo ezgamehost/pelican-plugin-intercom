@@ -25,7 +25,7 @@ class IntercomPlugin implements Plugin, HasPluginSettings
 
     public function boot(Panel $panel): void
     {
-        //
+        // Intentionally empty; no per-panel boot work is needed.
     }
 
     /**
@@ -33,13 +33,17 @@ class IntercomPlugin implements Plugin, HasPluginSettings
      */
     public function getSettingsForm(): array
     {
+        // Reading defaults from config() (not env()) so they survive
+        // `php artisan config:cache` in production deployments.
+        // saveSettings() writes .env + calls config:clear, so the next
+        // render picks up fresh values through this same config path.
         return [
             TextInput::make('INTERCOM_APP_ID')
                 ->label('App ID')
                 ->placeholder('abc12345')
                 ->helperText('Found in your Intercom workspace under Settings → Installation → Web.')
                 ->required()
-                ->default(env('INTERCOM_APP_ID')),
+                ->default(config('intercom.app_id')),
             TextInput::make('INTERCOM_IDENTITY_SECRET')
                 ->label('Identity Verification Secret')
                 ->helperText('Settings → Security → Identity Verification → Generate secret.')
@@ -47,12 +51,12 @@ class IntercomPlugin implements Plugin, HasPluginSettings
                 ->revealable()
                 ->autocomplete(false)
                 ->required()
-                ->default(env('INTERCOM_IDENTITY_SECRET')),
+                ->default(config('intercom.identity_secret')),
             TextInput::make('INTERCOM_API_BASE')
                 ->label('Widget Base URL (optional)')
                 ->placeholder('https://widget.intercom.io')
                 ->helperText('Override for EU/AU data-residency regions. Leave blank for default.')
-                ->default(env('INTERCOM_API_BASE')),
+                ->default(config('intercom.api_base')),
         ];
     }
 

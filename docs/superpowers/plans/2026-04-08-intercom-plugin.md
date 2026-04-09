@@ -191,14 +191,16 @@ class IntercomBootPayloadTest extends TestCase
 {
     protected function setUp(): void
     {
+        parent::setUp();
+
         // PluginService::loadPlugins() early-returns in tests, so we must
-        // register the plugin's PSR-4 mapping manually. addPsr4 is
-        // idempotent — composer's ClassLoader de-dupes on re-registration.
+        // register the plugin's PSR-4 mapping manually. Re-registering
+        // the same prefix on later tests is a no-op in composer's ClassLoader.
+        // IMPORTANT: parent::setUp() must run first — base_path() requires
+        // the Laravel app to be booted.
         /** @var ClassLoader $classLoader */
         $classLoader = require base_path('vendor/autoload.php');
         $classLoader->addPsr4('EzGameHostLlc\\Intercom\\', base_path('plugins/intercom/src/'));
-
-        parent::setUp();
 
         config()->set('intercom', require base_path('plugins/intercom/config/intercom.php'));
     }
@@ -660,11 +662,12 @@ class BootViewTest extends TestCase
 {
     protected function setUp(): void
     {
+        parent::setUp();
+
+        // parent::setUp() must run first — base_path() requires Laravel booted.
         /** @var ClassLoader $classLoader */
         $classLoader = require base_path('vendor/autoload.php');
         $classLoader->addPsr4('EzGameHostLlc\\Intercom\\', base_path('plugins/intercom/src/'));
-
-        parent::setUp();
 
         config()->set('intercom', require base_path('plugins/intercom/config/intercom.php'));
 
@@ -843,11 +846,12 @@ class IntercomPluginSettingsTest extends TestCase
 {
     protected function setUp(): void
     {
+        parent::setUp();
+
+        // parent::setUp() must run first — base_path() requires Laravel booted.
         /** @var ClassLoader $classLoader */
         $classLoader = require base_path('vendor/autoload.php');
         $classLoader->addPsr4('EzGameHostLlc\\Intercom\\', base_path('plugins/intercom/src/'));
-
-        parent::setUp();
     }
 
     public function test_settings_form_has_three_fields_with_expected_names(): void
@@ -1071,11 +1075,12 @@ class IntercomPluginProviderTest extends TestCase
 {
     protected function setUp(): void
     {
+        parent::setUp();
+
+        // parent::setUp() must run first — base_path() requires Laravel booted.
         /** @var ClassLoader $classLoader */
         $classLoader = require base_path('vendor/autoload.php');
         $classLoader->addPsr4('EzGameHostLlc\\Intercom\\', base_path('plugins/intercom/src/'));
-
-        parent::setUp();
     }
 
     public function test_provider_registers_without_error(): void

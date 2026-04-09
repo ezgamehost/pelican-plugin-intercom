@@ -52,10 +52,10 @@ class IntercomPluginSettingsTest extends TestCase
             ]);
 
             $envContents = file_get_contents($realEnv);
-            // Env::writeVariables quotes string values: KEY="value"
-            $this->assertMatchesRegularExpression('/INTERCOM_APP_ID=["\'"]?my-test-app-id["\'"]?/', $envContents);
-            $this->assertMatchesRegularExpression('/INTERCOM_IDENTITY_SECRET=["\'"]?my-test-secret["\'"]?/', $envContents);
-            $this->assertMatchesRegularExpression('/INTERCOM_API_BASE=["\'"]?https:\/\/custom\.intercom\.example["\'"]?/', $envContents);
+            // Env::writeVariables always wraps values in double quotes.
+            $this->assertStringContainsString('INTERCOM_APP_ID="my-test-app-id"', $envContents);
+            $this->assertStringContainsString('INTERCOM_IDENTITY_SECRET="my-test-secret"', $envContents);
+            $this->assertStringContainsString('INTERCOM_API_BASE="https://custom.intercom.example"', $envContents);
         } finally {
             // Restore or remove the real .env.
             if ($realEnvBackup !== null) {
