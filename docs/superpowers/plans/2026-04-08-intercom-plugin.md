@@ -1097,7 +1097,9 @@ class IntercomPluginProviderTest extends TestCase
     public function test_provider_merges_intercom_config(): void
     {
         // Wipe any pre-existing intercom config so we see the merge effect.
-        config()->set('intercom', null);
+        // Use [] not null — mergeConfigFrom internally calls array_merge,
+        // which TypeErrors when the existing config key is null on PHP 8.2+.
+        config()->set('intercom', []);
 
         $this->app->register(IntercomPluginProvider::class);
 
