@@ -2,8 +2,7 @@
 
 namespace EzGameHostLlc\Intercom\Providers;
 
-use App\Providers\Filament\AppPanelProvider;
-use App\Providers\Filament\ServerPanelProvider;
+use Filament\Facades\Filament;
 use Filament\Support\Facades\FilamentView;
 use Filament\View\PanelsRenderHook;
 use Illuminate\Support\Facades\Blade;
@@ -11,6 +10,8 @@ use Illuminate\Support\ServiceProvider;
 
 class IntercomPluginProvider extends ServiceProvider
 {
+    private const ALLOWED_PANELS = ['server', 'app'];
+
     public function register(): void
     {
         // PluginService::loadPlugins() already does config()->set('intercom', require ...)
@@ -26,10 +27,20 @@ class IntercomPluginProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Filament's renderHook scopes match against Page class names at render
+        // time (see BasePage::getRenderHookScopes), not PanelProvider classes —
+        // so panel-level filtering must happen inside the hook itself.
         FilamentView::registerRenderHook(
             PanelsRenderHook::SCRIPTS_AFTER,
-            fn () => Blade::render('intercom::boot'),
-            scopes: [ServerPanelProvider::class, AppPanelProvider::class],
+            function (): string {
+                $panelId = Filament::getCurrentPanel()?->getId();
+
+                if (!in_array($panelId, self::ALLOWED_PANELS, true)) {
+                    return '';
+                }
+
+                return Blade::render('intercom::boot');
+            },
         );
     }
 }
