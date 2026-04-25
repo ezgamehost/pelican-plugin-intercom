@@ -109,6 +109,39 @@ class BootViewTest extends TestCase
         );
     }
 
+    public function test_loader_iife_braces_are_balanced(): void
+    {
+        // Regression for v1.0.1: the loader IIFE was missing one `}` and
+        // every browser threw `SyntaxError: Unexpected token ')'` once the
+        // render hook actually fired in v1.0.1, leaving window.Intercom
+        // undefined. Brace-balance is a cheap structural check that catches
+        // the mistake without needing a real JS parser.
+        $user = new User();
+        $user->forceFill([
+            'id' => 1,
+            'uuid' => '77777777-7777-7777-7777-777777777777',
+            'email' => 'carol@example.com',
+            'username' => 'carol',
+            'language' => 'en',
+            'timezone' => 'UTC',
+            'created_at' => now(),
+        ]);
+        $this->actingAs($user);
+
+        config()->set('intercom.app_id', 'workspace-xyz');
+        config()->set('intercom.identity_secret', 'secret');
+
+        $output = view('intercom::boot')->render();
+
+        // Strip JS string literals so braces inside strings don't confuse
+        // the count. The loader uses single-quoted strings only.
+        $stripped = preg_replace("/'(?:[^'\\\\]|\\\\.)*'/", "''", $output);
+        $opens = substr_count((string) $stripped, '{');
+        $closes = substr_count((string) $stripped, '}');
+
+        $this->assertSame($opens, $closes, "Unbalanced braces in rendered loader: $opens open vs $closes close.");
+    }
+
     public function test_user_data_containing_script_tag_is_hex_escaped(): void
     {
         // Regression guard: if JSON_HEX_TAG is ever removed or the payload
