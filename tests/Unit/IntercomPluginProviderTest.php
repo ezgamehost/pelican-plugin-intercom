@@ -2,9 +2,13 @@
 
 namespace EzGameHostLlc\Intercom\Tests\Unit;
 
+use App\Models\User;
 use App\Tests\TestCase;
 use Composer\Autoload\ClassLoader;
 use EzGameHostLlc\Intercom\Providers\IntercomPluginProvider;
+use Filament\Facades\Filament;
+use Filament\Panel;
+use Illuminate\Support\Facades\View;
 
 class IntercomPluginProviderTest extends TestCase
 {
@@ -16,6 +20,9 @@ class IntercomPluginProviderTest extends TestCase
         /** @var ClassLoader $classLoader */
         $classLoader = require base_path('vendor/autoload.php');
         $classLoader->addPsr4('EzGameHostLlc\\Intercom\\', base_path('plugins/intercom/src/'));
+
+        config()->set('intercom', require base_path('plugins/intercom/config/intercom.php'));
+        View::addNamespace('intercom', base_path('plugins/intercom/resources/views'));
     }
 
     public function test_provider_registers_without_error(): void
@@ -40,5 +47,74 @@ class IntercomPluginProviderTest extends TestCase
 
         $this->assertNotNull(config('intercom.api_base'));
         $this->assertSame('https://widget.intercom.io', config('intercom.api_base'));
+    }
+
+    public function test_provider_renders_boot_view_on_app_panel(): void
+    {
+        $this->actingAsConfiguredUser();
+
+        Filament::shouldReceive('getCurrentPanel')
+            ->once()
+            ->andReturn($this->fakePanel('app'));
+
+        $provider = new IntercomPluginProvider($this->app);
+
+        $output = $provider->renderBootScriptForCurrentPanel();
+
+        $this->assertStringContainsString('window.intercomSettings', $output);
+        $this->assertStringContainsString('"app_id":"workspace-xyz"', $output);
+    }
+
+    public function test_provider_renders_boot_view_on_server_panel(): void
+    {
+        $this->actingAsConfiguredUser();
+
+        Filament::shouldReceive('getCurrentPanel')
+            ->once()
+            ->andReturn($this->fakePanel('server'));
+
+        $provider = new IntercomPluginProvider($this->app);
+
+        $output = $provider->renderBootScriptForCurrentPanel();
+
+        $this->assertStringContainsString('window.intercomSettings', $output);
+        $this->assertStringContainsString('"app_id":"workspace-xyz"', $output);
+    }
+
+    public function test_provider_does_not_render_boot_view_on_admin_panel(): void
+    {
+        $this->actingAsConfiguredUser();
+
+        Filament::shouldReceive('getCurrentPanel')
+            ->once()
+            ->andReturn($this->fakePanel('admin'));
+
+        $provider = new IntercomPluginProvider($this->app);
+
+        $this->assertSame('', $provider->renderBootScriptForCurrentPanel());
+    }
+
+    private function fakePanel(string $id): Panel
+    {
+        return Panel::make()->id($id);
+    }
+
+    private function actingAsConfiguredUser(): void
+    {
+        $user = new User();
+        $user->forceFill([
+            'id' => 1,
+            'uuid' => '99999999-9999-9999-9999-999999999999',
+            'email' => 'support-test@example.com',
+            'username' => 'support-test',
+            'language' => 'en',
+            'timezone' => 'UTC',
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($user);
+
+        config()->set('intercom.app_id', 'workspace-xyz');
+        config()->set('intercom.identity_secret', 'secret');
     }
 }

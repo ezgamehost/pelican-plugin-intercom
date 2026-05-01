@@ -1,10 +1,10 @@
 # Pelican Intercom Plugin
 
-Embeds the Intercom Messenger on end-user Pelican Panel pages (client area and server list) with server-side HMAC Identity Verification. Authenticated panel users can open verified support conversations with your team directly from the panel.
+Embeds the Intercom Messenger on end-user Pelican Panel pages, including the server list and every per-server page, with server-side HMAC Identity Verification. Authenticated panel users open verified support conversations through Intercom's own Messenger launcher, not a custom Pelican button.
 
 ## Features
 
-- Widget on the `server` (client area) and `app` (server list) panels only — never on admin pages.
+- Widget on the `app` (server list) and `server` (all per-server pages) panels only — never on admin pages.
 - HMAC-SHA256 Identity Verification using the user's UUID (prevents impersonation via browser devtools).
 - Whitelisted identity payload: `user_id` (UUID), `email`, `name` (username), `created_at`, `language`, `timezone`. Nothing else.
 - Admin settings UI via the host panel's Plugins page (no env editing required).
@@ -31,7 +31,7 @@ Leave blank unless you use Intercom's EU or AU data residency regions. If so, se
 
 ## How it works
 
-On every authenticated request to a `server` or `app` panel page, the plugin's service provider fires a Filament render hook that emits the Intercom boot script at the bottom of the page. The `window.intercomSettings` object is built server-side in PHP — so the HMAC hash is computed on a secret the browser never sees, and a malicious user can't impersonate another user by editing the page source.
+On every authenticated request to an `app` or `server` panel page, the plugin's service provider fires a Filament render hook that emits the Intercom boot script at the bottom of the page. Intercom's own Messenger launcher is the visible support control. The `window.intercomSettings` object is built server-side in PHP — so the HMAC hash is computed on a secret the browser never sees, and a malicious user can't impersonate another user by editing the page source.
 
 The plugin does NOT:
 
